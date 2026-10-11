@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "OmniRunner: Cyber Heist",
+    "slug": "omnirunner-cyber-heist",
+    "scheme": "omnirunner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#07070F",
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#07070F" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.omnirunner.cyberheist",
+      "infoPlist": { "NSMotionUsageDescription": "OmniRunner counts your steps to charge your Energy Core." }
+    },
+    "android": {
+      "package": "com.omnirunner.cyberheist",
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
+      "adaptiveIcon": {
+        "backgroundColor": "#07070F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}
