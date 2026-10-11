@@ -1,13 +1,15 @@
-export interface Question {
+// SERVER-SIDE ONLY. Answer keys and traps must never be bundled in a production client.
+// (This demo ships it in-app because the backend is mocked; src/server/ is the part you move to Fastify.)
+export interface BankQuestion {
   id: number;
-  kind: 'emoji' | 'plot';
+  kind: 'emoji' | 'plot' | 'quote';
   prompt: string;
   options: [string, string, string, string];
-  answer: number; // index into options
+  answer: number;
+  honeypot?: { trap: number }; // the classic wrong answer an LLM / search engine returns
 }
 
-// Demo bank. In production the server serves questions per session and keeps the answer key private.
-export const QUESTIONS: Question[] = [
+export const BANK: BankQuestion[] = [
   { id: 1, kind: 'emoji', prompt: '🦈🏖️🚤', options: ['Jaws', 'Finding Nemo', 'Deep Blue Sea', 'The Meg'], answer: 0 },
   { id: 2, kind: 'emoji', prompt: '🧙‍♂️💍🌋', options: ['Harry Potter', 'The Lord of the Rings', 'Willow', 'Eragon'], answer: 1 },
   { id: 3, kind: 'emoji', prompt: '🚢🧊❤️', options: ['Poseidon', 'Titanic', 'Cast Away', 'The Abyss'], answer: 1 },
@@ -22,18 +24,8 @@ export const QUESTIONS: Question[] = [
   { id: 12, kind: 'emoji', prompt: '🚀🌌🥔', options: ['Gravity', 'Interstellar', 'The Martian', 'Moon'], answer: 2 },
   { id: 13, kind: 'emoji', prompt: '🦇🌃🃏', options: ['Batman Begins', 'The Dark Knight', 'Joker', 'Catwoman'], answer: 1 },
   { id: 14, kind: 'plot', prompt: 'A cyberpunk animated classic where a biker gang leader gains psychic powers in Neo-Tokyo.', options: ['Akira', 'Perfect Blue', 'Ninja Scroll', 'Appleseed'], answer: 0 },
+  { id: 15, kind: 'emoji', prompt: '🎈🏠👴👦', options: ['Up', 'Coco', 'Big Fish', 'Soul'], answer: 0 },
+  // Honeypots: phrased so the famous misquote is wrong. Real players read carefully; scripts pick the trap.
+  { id: 101, kind: 'quote', prompt: 'Casablanca: which line is ACTUALLY spoken in the film?', options: ['"Play it again, Sam"', '"Play it, Sam"', '"Sing it again, Sam"', '"Play that song, Sam"'], answer: 1, honeypot: { trap: 0 } },
+  { id: 102, kind: 'quote', prompt: 'The Empire Strikes Back: Vader’s actual reveal line is…', options: ['"Luke, I am your father"', '"No, I am your father"', '"Luke, I’m your dad"', '"Search your feelings, I am your father"'], answer: 1, honeypot: { trap: 0 } },
 ];
-
-export function pickQuestions(seed: number, count = 5): Question[] {
-  let t = seed >>> 0;
-  const rnd = () => {
-    t = (t + 0x9e3779b9) >>> 0;
-    let r = Math.imul(t ^ (t >>> 16), 0x85ebca6b);
-    r = Math.imul(r ^ (r >>> 13), 0xc2b2ae35);
-    return ((r ^ (r >>> 16)) >>> 0) / 4294967296;
-  };
-  return QUESTIONS.map((q) => ({ q, k: rnd() }))
-    .sort((a, b) => a.k - b.k)
-    .slice(0, count)
-    .map((x) => x.q);
-}

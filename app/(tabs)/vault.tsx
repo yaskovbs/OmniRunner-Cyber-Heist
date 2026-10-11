@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NeonButton, Panel, Stat } from '@/components/ui';
-import { TriviaGame, type TriviaResult } from '@/game/trivia/TriviaGame';
+import { TriviaGame } from '@/game/trivia/TriviaGame';
 import { RhythmGame, type RhythmOutcome } from '@/game/rhythm/RhythmGame';
 import { useStartHeist, useSubmitHeist } from '@/api/hooks';
 import { useGame } from '@/store/gameStore';
+import type { HeistSession } from '@/server/mockServer';
 import { ECONOMY } from '@/shared/economy';
 import type { Verdict } from '@/shared/verify';
 import { colors, spacing } from '@/theme/theme';
@@ -16,9 +17,8 @@ export default function Vault() {
   const startMut = useStartHeist();
   const submitMut = useSubmitHeist();
   const [phase, setPhase] = useState<Phase>('lobby');
-  const [session, setSession] = useState<{ sessionId: string; seed: number } | null>(null);
+  const [session, setSession] = useState<HeistSession | null>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
-  const trivia = useRef<TriviaResult>({ answered: 0, correct: 0, avgMs: 0 });
 
   const start = async () => {
     if (!g.spendEnergy(ECONOMY.heistEnergyCost)) return;
@@ -30,16 +30,11 @@ export default function Vault() {
     }
   };
 
-  const onTrivia = (r: TriviaResult) => {
-    trivia.current = r;
-    setPhase('rhythm');
-  };
-
   const onRhythm = async ({ result, inputs }: RhythmOutcome) => {
     if (!session) return;
     setPhase('submitting');
     const v = await submitMut.mutateAsync({
-      sub: { sessionId: session.sessionId, seed: session.seed, inputs, claimed: result, trivia: trivia.current },
+      sub: { sessionId: session.sessionId, seed: session.seed, inputs, claimed: result },
       gearBonus: g.lootBonus(),
     });
     if (v.ok && v.lootCoins !== undefined && v.verified) g.recordHeist(v.verified.score, v.lootCoins);
@@ -78,7 +73,7 @@ export default function Vault() {
         </>
       )}
 
-      {phase === 'trivia' && session && <TriviaGame seed={session.seed} onDone={onTrivia} />}
+      {phase === 'trivia' && session && <TriviaGame sessionId={session.sessionId} questions={session.questions} onDone={() => setPhase('rhythm')} />}
 
       {phase === 'submitting' && (
         <Panel title="Uploading input log">

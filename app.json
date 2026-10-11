@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.omnirunner.cyberheist",
-      "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION", "android.permission.ACCESS_FINE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#07070F",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", ["expo-location", { "locationWhenInUsePermission": "OmniRunner verifies your steps against your movement to prevent cheating." }]],
     "experiments": { "typedRoutes": true }
   }
 }

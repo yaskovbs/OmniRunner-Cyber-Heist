@@ -5,6 +5,7 @@ export const ECONOMY = {
   heistEnergyCost: 25,
   dailyStepGoal: 8000,
   maxCadencePerMin: 200, // anti-cheat ceiling (steps / minute)
+  bucketMs: 15 * 60 * 1000, // attestation window (override shorter in __DEV__)
   tournamentRake: 0.1,
   rewardedAdEnergy: 10,
   minerBaseRate: 2, // coins / minute per bot level

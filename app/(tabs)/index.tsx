@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Bar, NeonButton, Panel, Stat } from '@/components/ui';
 import { useGame } from '@/store/gameStore';
 import { useSteps } from '@/game/steps/useSteps';
+import { useStepBuckets } from '@/game/steps/useStepBuckets';
 import { ECONOMY } from '@/shared/economy';
 import { colors, spacing } from '@/theme/theme';
 
@@ -17,10 +18,11 @@ const STATUS_TEXT = {
 export default function Hub() {
   const router = useRouter();
   const status = useSteps();
+  const geo = useStepBuckets();
   const g = useGame();
   const [adCooldown, setAdCooldown] = useState(false);
 
-  const canClaim = !g.dailyKeyClaimed && g.stepsToday >= ECONOMY.dailyStepGoal;
+  const canClaim = !g.dailyKeyClaimed && g.stepsVerified >= ECONOMY.dailyStepGoal;
 
   const claim = () => {
     if (g.claimDailyKey()) Alert.alert('Server key acquired', 'Open it in the Black Market to crack the encrypted server crate.');
@@ -49,7 +51,9 @@ export default function Hub() {
 
       <Panel title="Energy core">
         <Bar value={g.energy} max={ECONOMY.maxEnergy} color={colors.cyan} label="ENERGY" />
-        <Bar value={g.stepsToday} max={ECONOMY.dailyStepGoal} color={colors.purple} label="STEPS TODAY" />
+        <Bar value={g.stepsVerified} max={ECONOMY.dailyStepGoal} color={colors.purple} label="VERIFIED STEPS" />
+        <Text style={s.sub}>{`Raw ${g.stepsToday} · server-verified ${g.stepsVerified} (checked every ${__DEV__ ? '1' : '15'} min against GPS)`}</Text>
+        {geo === 'denied' && <Text style={[s.sub, { color: colors.red }]}>Location is required to verify steps — enable it in Settings</Text>}
         <Text style={s.sub}>{STATUS_TEXT[status]}</Text>
         <Text style={s.sub}>{`${ECONOMY.stepsPerEnergy} steps = 1 energy · a heist costs ${ECONOMY.heistEnergyCost}`}</Text>
         <View style={s.btnRow}>
@@ -69,7 +73,7 @@ export default function Hub() {
         <Mission title="Breach a server" detail="Solve the circuit to deploy a mining bot" action="TERMINAL" ok onPress={() => router.push('/terminal')} />
         <Mission
           title="Walk 8,000 steps"
-          detail={`${Math.min(g.stepsToday, ECONOMY.dailyStepGoal)} / ${ECONOMY.dailyStepGoal} · reward: encrypted server crate`}
+          detail={`${Math.min(g.stepsVerified, ECONOMY.dailyStepGoal)} / ${ECONOMY.dailyStepGoal} · reward: encrypted server crate`}
           action={g.dailyKeyClaimed ? 'DONE' : 'KEEP MOVING'}
           ok={false}
           onPress={() => {}}

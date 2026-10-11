@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NeonButton, Panel, Stat } from '@/components/ui';
-import { useLeaderboard } from '@/api/hooks';
+import { requestWithdrawal, useLeaderboard } from '@/api/hooks';
 import { useGame } from '@/store/gameStore';
 import { ECONOMY, GEAR } from '@/shared/economy';
 import { colors, spacing } from '@/theme/theme';
@@ -13,9 +13,11 @@ export default function BlackMarket() {
   const board = useLeaderboard(g.bestScore);
   const usd = (g.coins * ECONOMY.coinToUsd).toFixed(2);
 
-  const withdraw = () => {
-    const ok = g.requestWithdraw(ECONOMY.withdrawMinCoins);
-    Alert.alert(ok ? 'Request queued' : 'Cannot withdraw', ok ? 'Payouts are reviewed by the server (KYC + anti-fraud) before release.' : `Minimum ${ECONOMY.withdrawMinCoins} coins.`);
+  const withdraw = async () => {
+    const d = await requestWithdrawal(ECONOMY.withdrawMinCoins);
+    g.requestWithdraw(ECONOMY.withdrawMinCoins, d);
+    const when = d.status === 'queued' ? 'now' : new Date(d.releaseAt).toLocaleString();
+    Alert.alert('Request received', `Payouts pass a server-side review. Earliest release: ${when}.`);
   };
 
   const crack = () => Alert.alert('Server crate', g.openKey() ?? 'You need a key. Hit 8,000 steps in a day.');
@@ -32,7 +34,7 @@ export default function BlackMarket() {
           <NeonButton label="CRACK CRATE" tone="pink" onPress={crack} disabled={g.keys < 1} style={{ flex: 1 }} />
           <NeonButton label="CASH OUT" tone="yellow" onPress={withdraw} disabled={g.coins < ECONOMY.withdrawMinCoins} style={{ flex: 1 }} />
         </View>
-        {g.pendingWithdrawals.length > 0 && <Text style={s.dim}>{`Pending withdrawals: ${g.pendingWithdrawals.length}`}</Text>}
+        {g.withdrawals.map((w, i) => <Text key={i} style={s.dim}>{`Withdrawal ${w.coins} · ${w.status} · ${new Date(w.releaseAt).toLocaleDateString()}`}</Text>)}
       </Panel>
 
       <Panel title="Gear (coin sink)">

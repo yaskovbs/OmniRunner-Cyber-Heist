@@ -14,7 +14,9 @@ interface GameState {
   day: string;
   energy: number;
   stepsToday: number;
-  stepsConverted: number;
+  stepsSubmitted: number; // raw steps already sent to the server in attestation buckets
+  stepsVerified: number; // steps the SERVER credited today
+  stepCarry: number;
   dailyKeyClaimed: boolean;
   keys: number;
   coins: number;
@@ -25,9 +27,11 @@ interface GameState {
   calibrationMs: number;
   heists: number;
   bestScore: number;
-  pendingWithdrawals: number[];
+  withdrawals: { coins: number; status: string; releaseAt: number }[];
 
-  syncSteps: (totalToday: number) => void;
+  syncSteps: (rawToday: number) => void;
+  markSubmitted: (rawSteps: number) => void;
+  creditVerified: (steps: number) => void;
   spendEnergy: (n: number) => boolean;
   addEnergy: (n: number) => void;
   addCoins: (n: number) => void;
@@ -41,7 +45,7 @@ interface GameState {
   collectMiner: () => number;
   setCalibration: (ms: number) => void;
   recordHeist: (score: number, coins: number) => void;
-  requestWithdraw: (coins: number) => boolean;
+  requestWithdraw: (coins: number, decision: { status: string; releaseAt: number }) => boolean;
   lootBonus: () => number;
 }
 
@@ -51,7 +55,9 @@ export const useGame = create<GameState>()(
       day: dayKey(),
       energy: 40,
       stepsToday: 0,
-      stepsConverted: 0,
+      stepsSubmitted: 0,
+      stepsVerified: 0,
+      stepCarry: 0,
       dailyKeyClaimed: false,
       keys: 0,
       coins: 250,
@@ -62,20 +68,24 @@ export const useGame = create<GameState>()(
       calibrationMs: 0,
       heists: 0,
       bestScore: 0,
-      pendingWithdrawals: [],
+      withdrawals: [],
 
-      syncSteps: (totalToday) => {
-        const st = get();
-        if (st.day !== dayKey()) {
-          set({ day: dayKey(), stepsToday: 0, stepsConverted: 0, dailyKeyClaimed: false });
+      // Raw pedometer value: display only. Energy is credited exclusively by creditVerified() after server validation.
+      syncSteps: (rawToday) => {
+        if (get().day !== dayKey()) {
+          set({ day: dayKey(), stepsToday: 0, stepsSubmitted: 0, stepsVerified: 0, stepCarry: 0, dailyKeyClaimed: false });
         }
-        const cur = get();
-        const delta = Math.max(0, totalToday - cur.stepsConverted);
-        const gain = Math.floor(delta / ECONOMY.stepsPerEnergy);
+        set({ stepsToday: Math.max(get().stepsToday, rawToday) });
+      },
+      markSubmitted: (rawSteps) => set({ stepsSubmitted: rawSteps }),
+      creditVerified: (steps) => {
+        const s = get();
+        const total = s.stepCarry + steps;
+        const gain = Math.floor(total / ECONOMY.stepsPerEnergy);
         set({
-          stepsToday: Math.max(cur.stepsToday, totalToday),
-          stepsConverted: cur.stepsConverted + gain * ECONOMY.stepsPerEnergy,
-          energy: Math.min(ECONOMY.maxEnergy, cur.energy + gain),
+          stepsVerified: s.stepsVerified + steps,
+          stepCarry: total - gain * ECONOMY.stepsPerEnergy,
+          energy: Math.min(ECONOMY.maxEnergy, s.energy + gain),
         });
       },
       spendEnergy: (n) => {
@@ -87,7 +97,7 @@ export const useGame = create<GameState>()(
       addCoins: (n) => set({ coins: get().coins + n }),
       claimDailyKey: () => {
         const s = get();
-        if (s.dailyKeyClaimed || s.stepsToday < ECONOMY.dailyStepGoal) return false;
+        if (s.dailyKeyClaimed || s.stepsVerified < ECONOMY.dailyStepGoal) return false;
         set({ dailyKeyClaimed: true, keys: s.keys + 1 });
         return true;
       },
@@ -141,14 +151,14 @@ export const useGame = create<GameState>()(
       setCalibration: (ms) => set({ calibrationMs: Math.max(-250, Math.min(250, Math.round(ms))) }),
       recordHeist: (score, coins) =>
         set({ heists: get().heists + 1, bestScore: Math.max(get().bestScore, score), coins: get().coins + coins }),
-      requestWithdraw: (coins) => {
+      requestWithdraw: (coins, decision) => {
         const s = get();
         if (coins < ECONOMY.withdrawMinCoins || s.coins < coins) return false;
-        set({ coins: s.coins - coins, pendingWithdrawals: [...s.pendingWithdrawals, coins] });
+        set({ coins: s.coins - coins, withdrawals: [...s.withdrawals, { coins, status: decision.status, releaseAt: decision.releaseAt }] });
         return true;
       },
       lootBonus: () => GEAR.find((g) => g.id === get().equipped)?.lootMultiplier ?? 0,
     }),
-    { name: 'omnirunner-save-v1', storage: createJSONStorage(() => AsyncStorage) },
+    { name: 'omnirunner-save-v2', storage: createJSONStorage(() => AsyncStorage) },
   ),
 );
